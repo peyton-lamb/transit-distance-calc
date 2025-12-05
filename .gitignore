@@ -207,3 +207,6 @@ marimo/_lsp/
 __marimo__/
 
 .DS_Store
+
+#gtfs datasets on my local machine
+/pa-septa-metro/
