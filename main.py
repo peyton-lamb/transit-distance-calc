@@ -11,11 +11,29 @@ class Gshape:
         shapes_file = open("./" + agency + "/shapes.txt", "r", newline="")
         reader = csv.reader(shapes_file)
 
+        header = next(reader)
+
+        self.__shape_id_ndx = header.index("shape_id")
+        self.__shape_pt_lat_ndx = header.index("shape_pt_lat")
+        self.__shape_pt_lon_ndx = header.index("shape_pt_lon")
+
+        self.__dist_traveled_ndx = -1
+        if header.count("shape_dist_traveled") > 0:
+            self.__dist_traveled_ndx = header.index("shape_dist_traveled")
+
+
         for i in reader:
-            if(i[0] == id):
+            if(i[self.__shape_id_ndx] == id):
                 self.__points.append(i)
-        
-        self.__total_len = float(self.__points[len(self.__points)-1][4])
+
+        self.__total_len = 0
+        if self.__dist_traveled_ndx == -1:
+            self.__dist_traveled_ndx = len(self.__points[0])
+            self.__points[0].append(0.0)
+            for i in range(1, len(self.__points)):
+                self.__points[i].append(self.__points[i-1][self.__dist_traveled_ndx] + gd((self.__points[i][self.__shape_pt_lat_ndx], self.__points[i][self.__shape_pt_lon_ndx]), (self.__points[i-1][self.__shape_pt_lat_ndx], self.__points[i-1][self.__shape_pt_lon_ndx])).km)
+
+        self.__total_len = float(self.__points[len(self.__points) - 1][self.__dist_traveled_ndx])
 
         shapes_file.close()
         
@@ -24,9 +42,9 @@ class Gshape:
 
     def __find_nearest_point(self, coords):
         best_point = 0
-        best_dist = gd((self.__points[0][1], self.__points[0][2]), coords)
+        best_dist = gd((self.__points[0][self.__shape_pt_lat_ndx], self.__points[0][self.__shape_pt_lon_ndx]), coords)
         for i in range(1, len(self.__points) - 1):
-            pt_coords = (float(self.__points[i][1]), float(self.__points[i][2]))
+            pt_coords = (float(self.__points[i][self.__shape_pt_lat_ndx]), float(self.__points[i][self.__shape_pt_lon_ndx]))
             if gd(pt_coords, coords) < best_dist:
                 best_point = i
                 best_dist = gd(pt_coords, coords)
@@ -35,7 +53,7 @@ class Gshape:
     def get_shape_dist(self, coords1, coords2):
         ndx_one = self.__find_nearest_point(coords1)
         ndx_two = self.__find_nearest_point(coords2)
-        dist = abs(float(self.__points[ndx_two][4]) - float(self.__points[ndx_one][4]))
+        dist = abs(float(self.__points[ndx_two][self.__dist_traveled_ndx]) - float(self.__points[ndx_one][self.__dist_traveled_ndx]))
         return dist
 
 
@@ -46,13 +64,18 @@ class Stop:
         stops_file = open("./" + agency + "/stops.txt", "r", newline="")
         reader = csv.reader(stops_file)
 
-        next(reader)
+        header = next(reader)
+
+        stop_id_ndx = header.index("stop_id")
+        stop_name_ndx = header.index("stop_name")
+        stop_lat_ndx = header.index("stop_lat")
+        stop_lon_ndx = header.index("stop_lon")
 
         for i in reader:
-            if i[0] ==self.__id:
-                self.__name = i[2]
-                self.__lat = i[4]
-                self.__lon = i[5]
+            if i[stop_id_ndx] == self.__id:
+                self.__name = i[stop_name_ndx]
+                self.__lat = i[stop_lat_ndx]
+                self.__lon = i[stop_lon_ndx]
 
         stops_file.close()
 
@@ -72,11 +95,14 @@ class Trip:
         stop_times_file = open("./" + agency + "/stop_times.txt", "r", newline="")
         reader = csv.reader(stop_times_file)
 
-        next(reader)
+        header = next(reader)
+
+        trip_id_ndx = header.index("trip_id")
+        stop_id_ndx = header.index("stop_id")
 
         for i in reader:
-            if(i[0] == id):
-                self.__stops.append(Stop(agency, i[3]))
+            if(i[trip_id_ndx] == id):
+                self.__stops.append(Stop(agency, i[stop_id_ndx]))
         
         stop_times_file.close()
 
@@ -108,10 +134,12 @@ def main():
     agency_file = open("./" + agency +"/agency.txt", "r", newline="")
     reader = csv.reader(agency_file)
 
-    next(reader)
+    header = next(reader)
+
+    agency_name_ndx = header.index("agency_name")
 
     for line in reader:
-        print("Currently using GTFS data from:", line[1])
+        print("Currently using GTFS data from:", line[agency_name_ndx])
 
     agency_file.close()
 
@@ -120,7 +148,10 @@ def main():
     routes_file = open("./" + agency + "/routes.txt", "r", newline="")
     reader = csv.reader(routes_file)
 
-    next(reader)
+    header = next(reader)
+
+    route_id_ndx = header.index("route_id")
+    route_name_ndx = header.index("route_long_name")
 
     routes = []
 
@@ -129,12 +160,12 @@ def main():
 
     for line in reader:
         routes.append(line)
-        print(i, ":", line[0], line[3])
+        print(i, ":", line[route_id_ndx], line[route_name_ndx])
         i += 1
 
     route_choice = routes[int(input("Please choose a route by entering the number indicated in its row: ")) - 1]
 
-    print("You have chosen: ", route_choice[0], route_choice[3])
+    print("You have chosen: ", route_choice[route_id_ndx], route_choice[route_name_ndx])
     input("Press enter to continue")
 
     routes_file.close()
@@ -142,7 +173,11 @@ def main():
     directions_file = open("./" + agency + "/directions.txt", "r", newline="")
     reader = csv.reader(directions_file)
 
-    next(reader)
+    header = next(reader)
+
+    route_id_ndx_d = header.index("route_id")
+    direction_ndx = header.index("direction")
+    direction_destination_ndx = header.index("direction_destination")
 
     directions = []
 
@@ -150,14 +185,14 @@ def main():
     i = 1
 
     for line in reader:
-        if line[0] == route_choice[0]:
+        if line[route_id_ndx] == route_choice[route_id_ndx_d]:
             directions.append(line)
-            print(i, ":", line[3], "–", line[2])
+            print(i, ":", line[direction_destination_ndx], "–", line[direction_ndx])
             i += 1
 
     direction_choice = directions[int(input("Please choose a direction by entering the number indicated in its row: ")) - 1]
 
-    print("You have chosen: ", direction_choice[3])
+    print("You have chosen: ", direction_choice[direction_destination_ndx])
     input("Press enter to continue")
     print("Finding variations – This may take a while")
 
@@ -167,6 +202,7 @@ def main():
     reader = csv.reader(trips_file)
 
     header = next(reader)
+    route_id_ndx_t = header.index("route_id")
     direction_id_ndx = header.index("direction_id")
     shape_id_ndx = header.index("shape_id")
     trip_id_ndx = header.index("trip_id")
@@ -178,7 +214,7 @@ def main():
     possible_names = []
 
     for line in reader:
-            if(line[0] == route_choice[0] and line[direction_id_ndx] == direction_choice[1] and possible_shape_ids.count(line[shape_id_ndx]) == 0):
+            if(line[route_id_ndx_t] == route_choice[route_id_ndx] and line[direction_id_ndx] == direction_choice[1] and possible_shape_ids.count(line[shape_id_ndx]) == 0):
                 possible_trips.append(Trip(agency, line[trip_id_ndx]))
                 possible_shape_ids.append(line[shape_id_ndx])
                 possible_shapes.append(Gshape(agency, line[shape_id_ndx]))
@@ -186,7 +222,7 @@ def main():
     
     print("The following variations have been found:")
     for i in range(len(possible_trips)):
-        print(i+1, ":", possible_names[i], "of length", possible_shapes[i].get_len(), "with initial stop", possible_trips[i].get_first_stop().get_name(), "and last stop", possible_trips[i].get_last_stop().get_name(), "and", possible_trips[i].get_stop_count(), "total stops")
+        print(i+1, ":", possible_names[i], "of length", round(possible_shapes[i].get_len(), 2), "with initial stop", possible_trips[i].get_first_stop().get_name(), "and last stop", possible_trips[i].get_last_stop().get_name(), "and", possible_trips[i].get_stop_count(), "total stops")
 
     variant_choice = int(input("Please choose a variation by entering the number indicated in its row: ")) - 1
 
