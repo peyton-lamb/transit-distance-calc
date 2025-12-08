@@ -128,10 +128,13 @@ class Trip:
 #            print(j, ":", self.__stops[i].get_name())
 
 def main():
-    print("Peyton's horridly clunky transit distance calculator. Version 0.1")
-    agency = input("Enter an agency code: ")
+    print("Peyton's horridly clunky transit distance calculator")
+    agency = input("Enter the name of the folder containing the desired GTFS feed: ")
 
-    agency_file = open("./" + agency +"/agency.txt", "r", newline="")
+    try:
+        agency_file = open("./" + agency +"/agency.txt", "r", newline="")
+    except FileNotFoundError:
+        print("The folder you entered was not found, or the GTFS dataset is incomplete (missing agency.txt file)")
     reader = csv.reader(agency_file)
 
     header = next(reader)
